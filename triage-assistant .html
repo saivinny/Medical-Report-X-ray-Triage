@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TriageNet — Medical Report + X-ray Triage Assistant</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#000000;
+    --panel:#141618;
+    --ink:#ECEFEE;
+    --ink-soft:#9BA3A6;
+    --line:#2B2F31;
+    --teal:#4FB8AA;
+    --teal-deep:#3AA296;
+    --amber:#E3A052;
+    --red:#E2726B;
+    --green:#63BE8B;
+    --chip:#1B1E20;
+    --header-bg:#000000;
+    --shadow: 0 1px 2px rgba(0,0,0,0.5), 0 10px 28px rgba(0,0,0,0.6);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    line-height:1.5;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:28px 20px 80px;}
+
+  /* ---------- header ---------- */
+  header.top{
+    background:var(--header-bg);
+    color:#EAF0EE;
+    padding:26px 0 0 0;
+    border-bottom:1px solid var(--line);
+  }
+  .top-inner{max-width:1080px;margin:0 auto;padding:0 20px 22px;}
+  .course-row{
+    display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;
+    font-family:'IBM Plex Mono', monospace;font-size:12px;letter-spacing:.03em;
+    color:#9FB3AD;border-bottom:1px solid rgba(255,255,255,0.12);padding-bottom:14px;margin-bottom:18px;
+  }
+  .badge-prototype{
+    background:rgba(217,142,50,0.18);color:#F2C382;border:1px solid rgba(217,142,50,0.4);
+    padding:3px 9px;border-radius:20px;font-size:11px;
+  }
+  .brand{display:flex;align-items:center;gap:14px;}
+  .pulse-mark{width:38px;height:38px;flex:none;}
+  h1.title{
+    font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:30px;margin:0;letter-spacing:-0.01em;
+  }
+  .subtitle{color:#B9C6C2;font-size:14.5px;margin-top:4px;max-width:640px;}
+  .team-strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;}
+  .team-chip{
+    font-family:'IBM Plex Mono',monospace;font-size:11.5px;background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.16);color:#CBD6D2;padding:5px 10px;border-radius:6px;
+  }
+
+  /* ---------- ecg divider (signature element) ---------- */
+  .ecg{width:100%;height:34px;overflow:hidden;}
+  .ecg svg{display:block;width:200%;height:34px;animation:scrollecg 7s linear infinite;}
+  @keyframes scrollecg{ from{transform:translateX(0);} to{transform:translateX(-50%);} }
+  @media (prefers-reduced-motion: reduce){ .ecg svg{animation:none;} }
+
+  /* ---------- disclaimer ---------- */
+  .disclaimer{
+    background:rgba(227,160,82,0.10);border:1px solid rgba(227,160,82,0.35);color:#E9C08C;
+    border-radius:8px;padding:12px 16px;font-size:13.5px;margin:22px 0 26px;
+  }
+  .disclaimer b{color:#F2CE9E;}
+
+  /* ---------- layout ---------- */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media (max-width:800px){.grid{grid-template-columns:1fr;}}
+  .panel{
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:20px;box-shadow:var(--shadow);
+  }
+  .panel h2{
+    font-family:'Space Grotesk',sans-serif;font-size:16px;margin:0 0 4px;display:flex;align-items:center;gap:8px;
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--teal-deep);letter-spacing:.06em;
+    text-transform:uppercase;margin:0 0 6px;
+  }
+  .hint{font-size:12.5px;color:var(--ink-soft);margin:0 0 14px;}
+
+  .drop{
+    border:1.5px dashed #3A4144;border-radius:10px;padding:18px;text-align:center;cursor:pointer;
+    background:rgba(255,255,255,0.02);transition:border-color .15s, background .15s;position:relative;overflow:hidden;
+  }
+  .drop:hover{border-color:var(--teal);background:rgba(79,184,170,0.06);}
+  .drop input{position:absolute;inset:0;opacity:0;cursor:pointer;}
+  .drop .icon{font-size:26px;}
+  .drop small{display:block;color:var(--ink-soft);font-size:12px;margin-top:4px;}
+  #xrayPreviewWrap{position:relative;margin-top:12px;border-radius:8px;overflow:hidden;display:none;border:1px solid var(--line);}
+  #xrayPreview{display:block;width:100%;max-height:230px;object-fit:cover;filter:grayscale(1) contrast(1.05);}
+  .heatbox{
+    position:absolute;border:2px solid var(--red);border-radius:6px;
+    box-shadow:0 0 0 4px rgba(193,68,60,0.15);background:rgba(193,68,60,0.12);
+    display:none;
+  }
+  .heatbox::after{
+    content:"region of interest";position:absolute;top:-20px;left:0;
+    font-family:'IBM Plex Mono',monospace;font-size:10px;background:var(--red);color:#fff;padding:2px 6px;border-radius:4px;
+  }
+
+  textarea{
+    width:100%;min-height:140px;border:1px solid var(--line);border-radius:8px;padding:12px;
+    font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;resize:vertical;color:var(--ink);
+    background:var(--chip);
+  }
+  textarea::placeholder{color:#6E7577;}
+  textarea:focus{outline:2px solid var(--teal);outline-offset:1px;}
+
+  .runbar{display:flex;align-items:center;gap:12px;margin-top:18px;}
+  button.run{
+    background:var(--teal-deep);color:#fff;border:none;padding:11px 20px;border-radius:8px;
+    font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14.5px;cursor:pointer;
+    display:flex;align-items:center;gap:8px;transition:background .15s, transform .05s;
+  }
+  button.run:hover{background:#2C7C72;}
+  button.run:active{transform:scale(0.98);}
+  button.run:disabled{opacity:0.55;cursor:progress;}
+  .sample-link{font-size:12.5px;color:var(--teal-deep);background:none;border:none;text-decoration:underline;cursor:pointer;padding:0;font-family:inherit;}
+
+  /* pipeline steps */
+  .pipeline{margin-top:16px;display:none;flex-direction:column;gap:8px;}
+  .step{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink-soft);}
+  .step .dot{width:9px;height:9px;border-radius:50%;background:var(--line);flex:none;transition:background .2s;}
+  .step.active .dot{background:var(--amber);animation:blink 1s infinite;}
+  .step.done .dot{background:var(--green);}
+  .step.done{color:var(--ink);}
+  @keyframes blink{50%{opacity:0.35;}}
+
+  /* ---------- results ---------- */
+  #results{display:none;margin-top:26px;}
+  .verdict{
+    border-radius:12px;padding:22px;display:flex;justify-content:space-between;align-items:center;
+    color:#fff;box-shadow:var(--shadow);flex-wrap:wrap;gap:14px;
+  }
+  .verdict.normal{background:linear-gradient(135deg,#3F8F5F,#2F6E48);}
+  .verdict.attention{background:linear-gradient(135deg,#D98E32,#B06E1E);}
+  .verdict.urgent{background:linear-gradient(135deg,#C1443C,#8E2E28);}
+  .verdict-label{font-family:'IBM Plex Mono',monospace;font-size:12px;opacity:.85;letter-spacing:.05em;text-transform:uppercase;}
+  .verdict-cat{font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:700;margin-top:4px;}
+  .verdict-conf{text-align:right;}
+  .verdict-conf .num{font-family:'Space Grotesk',sans-serif;font-size:30px;font-weight:700;}
+  .verdict-conf .lbl{font-size:11.5px;opacity:.85;}
+
+  .subscores{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;}
+  @media (max-width:800px){.subscores{grid-template-columns:1fr;}}
+  .score-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;}
+  .score-card .head{display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;}
+  .score-card .head b{font-family:'Space Grotesk',sans-serif;}
+  .bar-track{height:9px;background:var(--chip);border-radius:5px;overflow:hidden;}
+  .bar-fill{height:100%;border-radius:5px;background:var(--teal);}
+  .keyword{background:rgba(226,114,107,0.18);color:#F5A39C;padding:1px 4px;border-radius:4px;font-weight:600;}
+  .keyword.med{background:rgba(227,160,82,0.18);color:#F0C089;}
+
+  /* metrics */
+  .metrics{margin-top:26px;}
+  .metrics h3{font-family:'Space Grotesk',sans-serif;font-size:15px;margin-bottom:4px;}
+  .metrics .note{font-size:12px;color:var(--ink-soft);margin-bottom:14px;}
+  .metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+  @media (max-width:800px){.metric-grid{grid-template-columns:1fr 1fr;}}
+  .metric-tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;text-align:center;}
+  .metric-tile .val{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;color:var(--teal-deep);}
+  .metric-tile .lbl{font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
+
+  /* footer / team */
+  .team-section{margin-top:52px;border-top:1px solid var(--line);padding-top:28px;}
+  .team-section .eyebrow{margin-bottom:2px;}
+  .team-section h2{font-family:'Space Grotesk',sans-serif;font-size:20px;margin:0 0 18px;}
+  .team-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
+  @media (max-width:700px){.team-grid{grid-template-columns:1fr;}}
+  .member{
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;
+    display:flex;gap:13px;
+  }
+  .avatar{
+    width:40px;height:40px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;
+    font-family:'Space Grotesk',sans-serif;font-weight:700;color:#fff;font-size:15px;
+  }
+  .member .name{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14.5px;}
+  .member .sid{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-soft);margin-bottom:5px;}
+  .member .role{font-size:12px;color:var(--teal-deep);font-weight:600;margin-bottom:4px;}
+  .member .did{font-size:12.5px;color:var(--ink-soft);}
+
+  .input-warning{
+    margin-top:16px;font-size:13px;border-radius:8px;padding:12px 16px;
+  }
+  .input-warning.block{
+    background:rgba(226,114,107,0.10);border:1px solid rgba(226,114,107,0.4);color:#F5A39C;
+  }
+  .input-warning.info{
+    background:rgba(227,160,82,0.10);border:1px solid rgba(227,160,82,0.35);color:#E9C08C;
+  }
+
+  footer.page{
+    text-align:center;font-size:11.5px;color:#6E7577;margin-top:40px;font-family:'IBM Plex Mono',monospace;
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="course-row">
+      <span>55-710603 · Advanced Artificial Intelligence Projects in Data Science</span>
+      <span class="badge-prototype">● interactive prototype — not for clinical use</span>
+    </div>
+    <div class="brand">
+      <svg class="pulse-mark" viewBox="0 0 40 40" fill="none">
+        <circle cx="20" cy="20" r="19" stroke="#3F9C93" stroke-width="1.4"/>
+        <path d="M4 20h6l3-9 5 18 4-13 2 4h12" stroke="#7FD9CC" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div>
+        <h1 class="title">TriageNet</h1>
+        <div class="subtitle">A multimodal (CNN + BioBERT) assistant that reads chest X-rays alongside clinical notes to flag Normal / Needs Attention / Urgent cases for review.</div>
+      </div>
+    </div>
+    <div class="team-strip">
+      <span class="team-chip">Sai Vinny Reddy Garlapati · 35064131</span>
+      <span class="team-chip">Sai Sijju Reddy Garlapati · 35064180</span>
+      <span class="team-chip">Kalkiram Reddy Guduru · 35062243</span>
+      <span class="team-chip">Shruthi Manupuri · 35062249</span>
+      <span class="team-chip">Makarand Mangunoori · 35062270</span>
+    </div>
+  </div>
+  <div class="ecg">
+    <svg viewBox="0 0 600 34" preserveAspectRatio="none">
+      <polyline fill="none" stroke="#3AA296" stroke-width="1.6"
+        points="0,17 40,17 50,4 60,30 70,17 140,17 150,10 158,24 166,17 240,17 250,4 260,30 270,17 340,17 350,10 358,24 366,17 440,17 450,4 460,30 470,17 540,17 550,10 558,24 566,17 600,17
+                600,17 640,17 650,4 660,30 670,17 740,17 750,10 758,24 766,17 840,17 850,4 860,30 870,17 940,17 950,10 958,24 966,17 1040,17 1050,4 1060,30 1070,17 1140,17 1150,10 1158,24 1166,17"/>
+    </svg>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="disclaimer">
+    <b>Academic coursework prototype.</b> All predictions below are produced by lightweight heuristics running in your browser (a pixel-contrast proxy for the CNN, a keyword-weighted proxy for BioBERT), simulating how the real DenseNet-121 + ClinicalBERT + fusion pipeline described in our proposal would behave. This is a UI/architecture demo, not a diagnostic device.
+  </div>
+
+  <div class="grid">
+    <!-- Image input -->
+    <div class="panel">
+      <p class="eyebrow">Step 1 · Imaging</p>
+      <h2>Chest X-ray</h2>
+      <p class="hint">Upload a chest X-ray image. Our CNN stage (DenseNet-121 in the full pipeline) would extract abnormality features here.</p>
+      <div class="drop" id="dropZone">
+        <input type="file" id="xrayInput" accept="image/*">
+        <div class="icon">🫁</div>
+        <div>Click or drop an X-ray image</div>
+        <small>JPG / PNG — used only in your browser session</small>
+      </div>
+      <div id="xrayPreviewWrap">
+        <img id="xrayPreview" alt="Uploaded X-ray preview">
+        <div class="heatbox" id="heatbox"></div>
+      </div>
+    </div>
+
+    <!-- Notes input -->
+    <div class="panel">
+      <p class="eyebrow">Step 2 · Clinical Notes</p>
+      <h2>Patient note</h2>
+      <p class="hint">Paste or type the clinical note. The NLP stage (BioBERT / ClinicalBERT in the full pipeline) would tokenise and classify this text.</p>
+      <textarea id="notesInput" placeholder="e.g. 58-year-old male presents with acute chest pain radiating to left arm, shortness of breath, sweating. History of hypertension..."></textarea>
+      <div style="margin-top:6px;">
+        <button class="sample-link" onclick="loadSample('normal')">try a normal example</button> ·
+        <button class="sample-link" onclick="loadSample('attention')">needs-attention example</button> ·
+        <button class="sample-link" onclick="loadSample('urgent')">urgent example</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="runbar">
+    <button class="run" id="runBtn" onclick="runTriage()">▶ Run triage analysis</button>
+    <span style="font-size:12.5px;color:var(--ink-soft);">Simulated end-to-end inference — runs entirely client-side</span>
+  </div>
+
+  <div id="inputWarning" class="input-warning" style="display:none;"></div>
+
+  <div class="pipeline" id="pipeline">
+    <div class="step" id="step1"><div class="dot"></div> Stage 1 — CNN feature extraction on X-ray (DenseNet-121, simulated)</div>
+    <div class="step" id="step2"><div class="dot"></div> Stage 2 — Clinical note encoding (BioBERT / ClinicalBERT, simulated)</div>
+    <div class="step" id="step3"><div class="dot"></div> Stage 3 — Multimodal fusion → triage decision</div>
+  </div>
+
+  <div id="results">
+    <div class="verdict" id="verdictBox">
+      <div>
+        <div class="verdict-label">Triage outcome</div>
+        <div class="verdict-cat" id="verdictCat">—</div>
+      </div>
+      <div class="verdict-conf">
+        <div class="num" id="verdictConf">—</div>
+        <div class="lbl">fused confidence</div>
+      </div>
+    </div>
+
+    <div class="subscores">
+      <div class="score-card">
+        <div class="head"><span>🫁 Image stream (CNN)</span><b id="imgScoreLbl">—</b></div>
+        <div class="bar-track"><div class="bar-fill" id="imgBar" style="width:0%;background:var(--teal);"></div></div>
+        <p style="font-size:12px;color:var(--ink-soft);margin:10px 0 0;" id="imgExplain">Grad-CAM would highlight the region shown on the X-ray above.</p>
+      </div>
+      <div class="score-card">
+        <div class="head"><span>📝 Text stream (NLP)</span><b id="txtScoreLbl">—</b></div>
+        <div class="bar-track"><div class="bar-fill" id="txtBar" style="width:0%;background:var(--amber);"></div></div>
+        <p style="font-size:12px;color:var(--ink-soft);margin:10px 0 0;" id="txtExplain">—</p>
+      </div>
+    </div>
+
+    <div class="metrics">
+      <h3>Validation performance (held-out test set, mock)</h3>
+      <p class="note">Reported for the fused multimodal model vs. the single-modality baselines described in our evaluation strategy.</p>
+      <div class="metric-grid">
+        <div class="metric-tile"><div class="val">92%</div><div class="lbl">Recall — Urgent class</div></div>
+        <div class="metric-tile"><div class="val">0.88</div><div class="lbl">F1-score</div></div>
+        <div class="metric-tile"><div class="val">0.94</div><div class="lbl">AUC-ROC</div></div>
+        <div class="metric-tile"><div class="val">86%</div><div class="lbl">Specificity</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="team-section">
+    <p class="eyebrow">Group breakdown</p>
+    <h2>Who built what</h2>
+    <div class="team-grid">
+
+      <div class="member">
+        <div class="avatar" style="background:#3AA296;">SV</div>
+        <div>
+          <div class="name">Sai Vinny Reddy Garlapati <span class="sid">35064131</span></div>
+          <div class="role">Computer Vision Lead</div>
+          <div class="did">Built the image-analysis stage of the pipeline: X-ray preprocessing (resize/normalise), the DenseNet-121 classifier for abnormality detection, and the Grad-CAM explainability overlay used to highlight suspicious regions.</div>
+        </div>
+      </div>
+
+      <div class="member">
+        <div class="avatar" style="background:#D98E32;">SS</div>
+        <div>
+          <div class="name">Sai Sijju Reddy Garlapati <span class="sid">35064180</span></div>
+          <div class="role">NLP Lead</div>
+          <div class="did">Built the clinical-text stage: note cleaning and tokenisation, and the BioBERT / ClinicalBERT classifier that scores notes into risk categories, plus the keyword-highlighting explainability shown in this demo.</div>
+        </div>
+      </div>
+
+      <div class="member">
+        <div class="avatar" style="background:#D9645C;">KR</div>
+        <div>
+          <div class="name">Kalkiram Reddy Guduru <span class="sid">35062243</span></div>
+          <div class="role">Multimodal Fusion &amp; Integration</div>
+          <div class="did">Designed the fusion layer that combines the CNN and NLP outputs into one triage score, and wired the three-stage pipeline (image → text → fusion) end to end.</div>
+        </div>
+      </div>
+
+      <div class="member">
+        <div class="avatar" style="background:#4FAE78;">SM</div>
+        <div>
+          <div class="name">Shruthi Manupuri <span class="sid">35062249</span></div>
+          <div class="role">Evaluation &amp; Ethics Lead</div>
+          <div class="did">Set up the train/validation/test splits and metrics (recall, F1, AUC-ROC, specificity, confusion matrices), ran the single-modality vs. fused-model comparison, and led the bias/fairness and data-privacy discussion.</div>
+        </div>
+      </div>
+
+      <div class="member" style="grid-column:1/-1;">
+        <div class="avatar" style="background:#4A5568;">MM</div>
+        <div>
+          <div class="name">Makarand Mangunoori <span class="sid">35062270</span></div>
+          <div class="role">Web App Development &amp; Project Management</div>
+          <div class="did">Built this interactive prototype (front end, simulated pipeline, results dashboard), and managed the GitHub Project Board — issue tracking, task assignment, and the Weeks 4/7/10 formative feedback checkpoints.</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <footer class="page">TriageNet — coursework prototype for 55-710603 — decision support only, not a substitute for clinical judgement</footer>
+</div>
+
+<script>
+const notesEl = document.getElementById('notesInput');
+const dropZone = document.getElementById('dropZone');
+const xrayInput = document.getElementById('xrayInput');
+const previewWrap = document.getElementById('xrayPreviewWrap');
+const previewImg = document.getElementById('xrayPreview');
+const heatbox = document.getElementById('heatbox');
+let imageScore = null; // 0-1, derived from the uploaded image
+let imgReady = false;
+
+const samples = {
+  normal: "45-year-old male, routine pre-employment check. No cough, no fever, no chest pain. Denies shortness of breath. Vitals stable, SpO2 99% on room air. Patient reports feeling well.",
+  attention: "34-year-old female with 3-day history of mild dry cough and low-grade fever (37.9°C). No chest pain. Mildly fatigued but ambulating comfortably. Advise monitoring and follow-up in 48 hours.",
+  urgent: "70-year-old male, sudden onset severe chest pain radiating to jaw, profuse sweating, unresponsive to voice on arrival, SpO2 84%. History of prior MI. Requires immediate assessment."
+};
+function loadSample(kind){ notesEl.value = samples[kind]; }
+
+dropZone.addEventListener('dragover', e=>{e.preventDefault(); dropZone.style.borderColor='#4FB8AA';});
+xrayInput.addEventListener('change', handleFile);
+function handleFile(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    previewImg.src = ev.target.result;
+    previewWrap.style.display = 'block';
+    const img = new Image();
+    img.onload = function(){
+      // crude "opacity / contrast proxy" scored from the actual pixels
+      const c = document.createElement('canvas');
+      const w = c.width = 64, h = c.height = 64;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(img,0,0,w,h);
+      const data = ctx.getImageData(0,0,w,h).data;
+      let sum=0, sumSq=0, n=w*h;
+      for(let i=0;i<data.length;i+=4){
+        const v=(data[i]+data[i+1]+data[i+2])/3;
+        sum+=v; sumSq+=v*v;
+      }
+      const mean = sum/n;
+      const variance = sumSq/n - mean*mean;
+      const std = Math.sqrt(Math.max(variance,0));
+      // Calibrated against the std-dev / mean actually measured across our
+      // sample images (roughly 10-30 std, 60-180 mean) so ordinary uploads
+      // spread across the full range instead of clustering at one end.
+      const normContrast = Math.min(1, Math.max(0, (std - 10) / 65));
+      const normDarkness = Math.min(1, Math.max(0, (180 - mean) / 150));
+      imageScore = Math.min(0.92, Math.max(0.05, normContrast*0.75 + normDarkness*0.15 + 0.08));
+      imgReady = true;
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+const RISK_WORDS = {
+  high: ["severe","acute","unresponsive","collapse","distress","distressed","emergency","radiating","profuse","sudden onset","not breathing","cardiac arrest","tightness"],
+  med: ["mild","monitor","fatigue","fatigued","low-grade","follow-up","cough","fever","shortness of breath","productive cough"]
+};
+
+function scoreText(text){
+  const lower = text.toLowerCase();
+  let hi=0, med=0;
+  RISK_WORDS.high.forEach(w=>{ if(lower.includes(w)) hi++; });
+  RISK_WORDS.med.forEach(w=>{ if(lower.includes(w)) med++; });
+  let score = Math.min(0.95, 0.08 + hi*0.16 + med*0.07);
+  return {score, hi, med};
+}
+
+function highlightNotes(text){
+  let html = text;
+  RISK_WORDS.high.forEach(w=>{
+    const re = new RegExp('('+w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','ig');
+    html = html.replace(re, '<span class="keyword">$1</span>');
+  });
+  RISK_WORDS.med.forEach(w=>{
+    const re = new RegExp('('+w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','ig');
+    html = html.replace(re, '<span class="keyword med">$1</span>');
+  });
+  return html;
+}
+
+async function runTriage(){
+  const btn = document.getElementById('runBtn');
+  const pipeline = document.getElementById('pipeline');
+  const results = document.getElementById('results');
+  const warningBox = document.getElementById('inputWarning');
+
+  const hasImage = imgReady;
+  const hasText = notesEl.value.trim().length > 0;
+
+  if(!hasImage && !hasText){
+    warningBox.className = 'input-warning block';
+    warningBox.textContent = 'No image and no text uploaded — please upload a chest X-ray and/or enter a clinical note before running the analysis.';
+    warningBox.style.display = 'block';
+    results.style.display = 'none';
+    pipeline.style.display = 'none';
+    return;
+  } else if(hasImage && !hasText){
+    warningBox.className = 'input-warning info';
+    warningBox.textContent = 'No text uploaded — running on the X-ray only. Add a clinical note for a fuller (fused) result.';
+    warningBox.style.display = 'block';
+  } else if(!hasImage && hasText){
+    warningBox.className = 'input-warning info';
+    warningBox.textContent = 'No image uploaded — running on the clinical note only. Add an X-ray for a fuller (fused) result.';
+    warningBox.style.display = 'block';
+  } else {
+    warningBox.style.display = 'none';
+  }
+
+  btn.disabled = true;
+  results.style.display='none';
+  pipeline.style.display='flex';
+  ['step1','step2','step3'].forEach(id=>{
+    document.getElementById(id).classList.remove('active','done');
+  });
+
+  await runStep('step1', 900);
+  await runStep('step2', 900);
+  await runStep('step3', 700);
+
+  const text = notesEl.value.trim() || samples.normal;
+  const txt = scoreText(text);
+  const img = imgReady ? imageScore : (0.15 + Math.random()*0.15); // gentle default if no image uploaded
+
+  // Symmetric blend: whichever modality signals higher risk dominates,
+  // with the average nudging the result -- so a single strong signal
+  // (just an alarming note, or just a striking image) can still move the
+  // result, while both agreeing pushes it further.
+  const maxScore = Math.max(img, txt.score);
+  const avgScore = (img + txt.score) / 2;
+  const fused = maxScore*0.65 + avgScore*0.35;
+
+  // update image stream
+  document.getElementById('imgScoreLbl').textContent = Math.round(img*100)+'%';
+  document.getElementById('imgBar').style.width = Math.round(img*100)+'%';
+  document.getElementById('imgExplain').textContent = imgReady
+    ? "Region-of-interest box on the X-ray marks where the (simulated) CNN attention was highest."
+    : "No X-ray uploaded — using a low baseline score for this stream.";
+
+  if(imgReady){
+    heatbox.style.display='block';
+    const seed = Math.abs(Math.round(img*1000));
+    const left = 15 + (seed % 40);
+    const top = 15 + ((seed*7) % 40);
+    heatbox.style.left = left+'%';
+    heatbox.style.top = top+'%';
+    heatbox.style.width = '28%';
+    heatbox.style.height = '26%';
+  }
+
+  // update text stream
+  document.getElementById('txtScoreLbl').textContent = Math.round(txt.score*100)+'%';
+  document.getElementById('txtBar').style.width = Math.round(txt.score*100)+'%';
+  document.getElementById('txtExplain').innerHTML = 'Flagged terms: ' + (txt.hi+txt.med>0 ? highlightNotes(text).match(/<span[^>]*>.*?<\/span>/g)?.slice(0,6).join(', ') || 'none' : 'none found');
+
+  // verdict
+  const verdictBox = document.getElementById('verdictBox');
+  const cat = document.getElementById('verdictCat');
+  const conf = document.getElementById('verdictConf');
+  verdictBox.classList.remove('normal','attention','urgent');
+  let label, cls;
+  if(fused < 0.28){ label='Normal'; cls='normal'; }
+  else if(fused < 0.55){ label='Needs Attention'; cls='attention'; }
+  else { label='Urgent'; cls='urgent'; }
+  verdictBox.classList.add(cls);
+  cat.textContent = label;
+  conf.textContent = Math.round(fused*100)+'%';
+
+  results.style.display='block';
+  btn.disabled = false;
+  results.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function runStep(id, delay){
+  return new Promise(resolve=>{
+    const el = document.getElementById(id);
+    el.classList.add('active');
+    setTimeout(()=>{
+      el.classList.remove('active');
+      el.classList.add('done');
+      resolve();
+    }, delay);
+  });
+}
+</script>
+</body>
+</html>
